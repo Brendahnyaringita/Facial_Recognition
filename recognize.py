@@ -92,8 +92,14 @@ for i in range(0, detections.shape[2]):
 
 		# perform classification to recognize the face
 		preds = recognizer.predict_proba(vec)[0]
+		#take the highest probability
 		j = np.argmax(preds)
+		print (j)
+
+		#extract the probability
 		proba = preds[j]
+		print(proba)
+		#Query label encoder for the name
 		name = le.classes_[j]
 
 		# draw the bounding box of the face along with the associated
@@ -101,9 +107,9 @@ for i in range(0, detections.shape[2]):
 		text = "{}: {:.2f}%".format(name, proba * 100)
 		y = startY - 10 if startY - 10 > 10 else startY + 10
 		cv2.rectangle(image, (startX, startY), (endX, endY),
-			(0, 0, 255), 2)
+			(75, 0, 130), 2)
 		cv2.putText(image, text, (startX, y),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+			cv2.FONT_HERSHEY_SIMPLEX, 0.45, (128, 0, 128), 2)
 
 # show the output image
 cv2.imshow("Image", image)
