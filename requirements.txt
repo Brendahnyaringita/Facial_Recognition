@@ -1,0 +1,10 @@
+#Use Python 3 and its pip version 
+pip 19.0.3 (python 3.6)
+
+#OpenCV - You dont need this but :) (https://www.pyimagesearch.com/opencv-tutorials-resources-guides/)
+Recommend OpenCV 3.4.2
+
+#imutils
+pip install --upgrade imutils
+
+
