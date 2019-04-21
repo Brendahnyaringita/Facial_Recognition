@@ -128,7 +128,7 @@ while True:
 
 			if proba > e:
 				res = le.classes_[j]
-				# If there is >95 % probability do something
+				# If there is >90 % probability do something
 				# Unfortunately Python does no have goto statements.
 				# Here for example the capturing will be paused for for a couple of seconds(10) after sending sms
 
