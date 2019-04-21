@@ -16,6 +16,9 @@ import time
 import cv2
 import os
 
+# SMS handler
+from sms_handler import smshandler
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--detector", required=True,
@@ -52,6 +55,9 @@ time.sleep(2.0)
 
 # start the FPS throughput estimator
 fps = FPS().start()
+
+res = ""
+message_handler = smshandler()
 
 # loop over frames from the video file stream
 while True:
@@ -107,11 +113,12 @@ while True:
 			# perform classification to recognize the face
 			preds = recognizer.predict_proba(vec)[0]
 			j = np.argmax(preds)
-			print(j)
+			# print(j)
 			
 			proba = preds[j]
-			print(proba)
+			# print(proba)
 
+			e = 0.90
 			t = 0.55
 			if proba > t:
 				name = le.classes_[j]
@@ -119,7 +126,18 @@ while True:
 			else:
 				name = "unknown"
 
-			print(name)
+			if proba > e:
+				res = le.classes_[j]
+				# If there is >95 % probability do something
+				# Unfortunately Python does no have goto statements.
+				# Here for example the capturing will be paused for for a couple of seconds(10) after sending sms
+
+
+				# Works... but in a weird way ;)
+				message_handler.sendsms(name)
+				time.sleep(10)
+
+			# print(name)
 
 			# draw the bounding box of the face along with the
 			# associated probability
@@ -136,6 +154,8 @@ while True:
 	# show the output frame
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
+
+	print(res)
 
 	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):
