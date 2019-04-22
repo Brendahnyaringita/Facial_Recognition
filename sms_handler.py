@@ -1,5 +1,10 @@
 import africastalking
 import logging
+import time
+import os
+
+from gtts import gTTS
+
 
 class smshandler():
 
@@ -11,8 +16,31 @@ class smshandler():
         africastalking.initialize(username, apikey)
         message_recipient = ['+254705066102']
         sms = africastalking.SMS
-        smsheader = "Hello, authorized: "
+        
+
+        currentTime = int(time.strftime('%H'))
+
+        if currentTime < 12 :
+            greeting = "Goodmorning "
+        elif currentTime > 12 :
+            greeting = "Good afternoon "
+        elif currentTime > 18 :
+            greeting = "Good evening "
+            
+        smsfooter = " welcome home"
         authname  = name
-        smspayload = smsheader + (authname)
+        smsheader = greeting
+        smspayload = smsheader + (authname) + smsfooter 
+        
+        #text to speech conversion
+        file = "test1.mp3"
+        
+        
+        #initialize tts, create mp3 and play
+        tts = gTTS(smspayload, 'en')
+        tts.save(file)
+        os.system("mpg123 " + file)
+
+
         smsresponse = sms.send(smspayload, message_recipient)
         logging.debug(smsresponse)

@@ -2,4 +2,6 @@ imutils
 numpy
 scikit-learn
 africastalking
+gTTS
+mpg123
 
