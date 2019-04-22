@@ -1,5 +1,3 @@
-
-
 # python recognize_video.py --detector face_detection_model \
 #	--embedding-model openface_nn4.small2.v1.t7 \
 #	--recognizer output/recognizer.pickle \
@@ -16,7 +14,7 @@ import time
 import cv2
 import os
 
-# SMS handler
+# SMS handler; class smshandler  
 from sms_handler import smshandler
 
 # construct the argument parser and parse the arguments
