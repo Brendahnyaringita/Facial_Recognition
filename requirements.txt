@@ -3,5 +3,5 @@ numpy
 scikit-learn
 africastalking
 gTTS
-mpg123
+mpg321
 

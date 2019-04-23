@@ -1,10 +1,8 @@
+from gtts import gTTS
 import africastalking
 import logging
 import time
 import os
-
-from gtts import gTTS
-
 
 class smshandler():
 
@@ -39,7 +37,7 @@ class smshandler():
         #initialize tts, create mp3 and play
         tts = gTTS(smspayload, 'en')
         tts.save(file)
-        os.system("mpg123 " + file)
+        os.system("mpg321 " + file)
 
 
         smsresponse = sms.send(smspayload, message_recipient)
