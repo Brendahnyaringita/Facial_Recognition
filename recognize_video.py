@@ -1,11 +1,12 @@
 # python recognize_video.py --detector face_detection_model \
 #	--embedding-model openface_nn4.small2.v1.t7 \
 #	--recognizer output/recognizer.pickle \
-#	--le output/le.pickle
+#	--le output/le.pickle--le output/le.pickle
 
-# import the necessary packages
+
 from imutils.video import VideoStream
 from imutils.video import FPS
+from imutils.video import WebcamVideoStream
 import numpy as np
 import argparse
 import imutils
@@ -13,6 +14,10 @@ import pickle
 import time
 import cv2
 import os
+import scipy.misc
+import threading
+from multiprocessing.pool import ThreadPool
+import logging
 
 # SMS handler; class smshandler  
 from sms_handler import smshandler
@@ -31,6 +36,22 @@ ap.add_argument("-c", "--confidence", type=float, default=0.5,
 	help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
+def face_classifier(facedimensions):
+
+	#converting the array to an image
+	faceDimensions = scipy.misc.toimage(facedimensions)
+	# construct a blob for the face ROI, then pass the blob
+	# through our face embedding model to obtain the 128-d
+	# quantification of the face
+	faceBlob = cv2.dnn.blobFromImage(faceDimensions, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+	embedder.setInput(faceBlob)
+	vec = embedder.forward()
+	predictions = recognizer.predict_proba(vec)[0]
+	j = np.argmax(predictions)
+	probability = predictions[j]
+	return probability,j
+
+
 # load our serialized face detector from disk
 print("[INFO] loading face detector...")
 protoPath = os.path.sep.join([args["detector"], "deploy.prototxt"])
@@ -48,13 +69,14 @@ le = pickle.loads(open(args["le"], "rb").read())
 
 # initialize the video stream, then allow the camera sensor to warm up
 print("[INFO] starting video stream...")
-vs = VideoStream(src=0).start()
-time.sleep(2.0)
+vs = WebcamVideoStream(src = 0).start()
+#vs = VideoStream(src=0).start()
+#time.sleep(2.0)
 
 # start the FPS throughput estimator
 fps = FPS().start()
 
-res = ""
+result = ""
 message_handler = smshandler()
 
 # loop over frames from the video file stream
@@ -81,7 +103,7 @@ while True:
 	# loop over the detections
 	#This step is for processing the detections
 	for i in range(0, detections.shape[2]):
-		# extract the confidence (i.e., probability) associated with
+		# extract the confidence (i.threshold., probability) associated with
 		# the prediction
 		confidence = detections[0, 0, i, 2]
 
@@ -89,62 +111,65 @@ while True:
 		if confidence > args["confidence"]:
 			# compute the (x, y)-coordinates of the bounding box for
 			# the face
-			box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-			(startX, startY, endX, endY) = box.astype("int")
+			boundingBox = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+			(startX, startY, endX, endY) = boundingBox.astype("int")
 
 			# extract the face ROI
-			face = frame[startY:endY, startX:endX]
-			(fH, fW) = face.shape[:2]
+			faceDimensions = frame[startY:endY, startX:endX]
+			(fH, fW) = faceDimensions.shape[:2]
+
 
 			# ensure the face width and height are sufficiently large
 			if fW < 20 or fH < 20:
 				continue
 
-			# construct a blob for the face ROI, then pass the blob
-			# through our face embedding model to obtain the 128-d
-			# quantification of the face
-			faceBlob = cv2.dnn.blobFromImage(face, 1.0 / 255,
-				(96, 96), (0, 0, 0), swapRB=True, crop=False)
-			embedder.setInput(faceBlob)
-			vec = embedder.forward()
+			# # construct a blob for the face ROI, then pass the blob
+			# # through our face embedding model to obtain the 128-d
+			# # quantification of the face
+			# faceBlob = cv2.dnn.blobFromImage(faceDimensions, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+			# embedder.setInput(faceBlob)
+			# vec = embedder.forward()
+            #
+			# # perform classification to recognize the face
+			# predictions = recognizer.predict_proba(vec)[0]
+			# j = np.argmax(predictions)
+			#
+			# probability = predictions[j]
 
-			# perform classification to recognize the face
-			preds = recognizer.predict_proba(vec)[0]
-			j = np.argmax(preds)
-			# print(j)
-			
-			proba = preds[j]
-			# print(proba)
+			print("Starting recognizer thread")
+			pool = ThreadPool(processes=1)
+			faceDimension = scipy.misc.toimage(faceDimensions)
+			async_result = pool.apply_async(face_classifier,[np.asarray(faceDimensions)])
 
-			e = 0.90
-			t = 0.55
-			if proba > t:
+
+			threshold = 0.90
+			truthValue = 0.55
+			probability,j = async_result.get()
+
+
+			if probability > truthValue:
 				name = le.classes_[j]
 				
 			else:
 				name = "unknown"
 
-			if proba > e:
-				res = le.classes_[j]
+			if probability > threshold:
+				result = le.classes_[j]
 				# If there is >90 % probability do something
-				# Unfortunately Python does no have goto statements.
 				# Here for example the capturing will be paused for a couple of seconds(10) after sending sms
 
-
-				# Works... but in a weird way ;)
 				message_handler.sendsms(name)
 				time.sleep(10)
 
-			# print(name)
 
 			# draw the bounding box of the face along with the
 			# associated probability
-			text = "{}: {:.2f}%".format(name, proba * 100)
+			text = "{}: {:.2f}%".format(name, probability * 100)
 			y = startY - 10 if startY - 10 > 10 else startY + 10
 			cv2.rectangle(frame, (startX, startY), (endX, endY),
 				(0, 0, 255), 2)
 			cv2.putText(frame, text, (startX, y),
-				cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+			cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
 
 	# update the FPS counter
 	fps.update()
@@ -153,11 +178,15 @@ while True:
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
 
-	print(res)
+	print(result)
 
 	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):
 		break
+
+
+
+
 
 # stop the timer and display FPS information
 fps.stop()
